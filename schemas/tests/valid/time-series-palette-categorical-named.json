@@ -1,0 +1,11 @@
+{
+  "kind": "PulzrTimeSeriesChart",
+  "spec": {
+    "visual": {
+      "palette": {
+        "mode": "categorical",
+        "name": "tableau10"
+      }
+    }
+  }
+}

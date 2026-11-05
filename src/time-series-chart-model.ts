@@ -1,0 +1,265 @@
+// Copyright The Perses Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+import type { FormatOptions, ThresholdOptions } from '@perses-dev/components';
+import type { LegendSpecOptions, OptionsEditorProps } from '@perses-dev/plugin-system';
+import type { Definition } from '@perses-dev/spec';
+import { schemeCategory10, schemeDark2, schemeSet1, schemeSet2, schemeSet3, schemeTableau10 } from 'd3-scale-chromatic';
+
+/**
+ * Line style options for time series charts.
+ */
+export type LineStyleType = 'solid' | 'dashed' | 'dotted';
+
+/**
+ * The schema for a TimeSeriesChart panel.
+ */
+export interface TimeSeriesChartDefinition extends Definition<TimeSeriesChartOptions> {
+  kind: 'PulzrTimeSeriesChart';
+}
+
+/**
+ * The Options object supported by the TimeSeriesChartPanel plugin.
+ */
+export interface TimeSeriesChartOptions {
+  legend?: LegendSpecOptions;
+  yAxis?: TimeSeriesChartYAxisOptions;
+  thresholds?: ThresholdOptions;
+  visual?: TimeSeriesChartVisualOptions;
+  tooltip?: TooltipSpecOptions;
+  querySettings?: QuerySettingsOptions[];
+}
+
+export interface QuerySettingsOptions {
+  queryIndex: number;
+  colorMode?: 'fixed' | 'fixed-single';
+  colorValue?: string;
+  lineStyle?: LineStyleType;
+  areaOpacity?: number;
+  format?: FormatOptions;
+  /**
+   * If true, the query's series values are negated for display so they render
+   * below the X axis. The original (positive) values are preserved for legend
+   * calculations and CSV export, matching Grafana's `transform: "negative-Y"` behavior.
+   */
+  negativeY?: boolean;
+  stack?: boolean;
+}
+
+export type TimeSeriesChartOptionsEditorProps = OptionsEditorProps<TimeSeriesChartOptions>;
+
+export interface TimeSeriesChartYAxisOptions {
+  show?: boolean;
+  label?: string;
+  format?: FormatOptions;
+  min?: number;
+  max?: number;
+  logBase?: LOG_BASE;
+}
+
+export interface TooltipSpecOptions {
+  enablePinning: boolean;
+}
+
+export type TimeSeriesChartPaletteMode = 'auto' | 'categorical';
+
+export const CATEGORICAL_PALETTE_SCHEMES = {
+  category10: schemeCategory10,
+  tableau10: schemeTableau10,
+  set1: schemeSet1,
+  set2: schemeSet2,
+  set3: schemeSet3,
+  dark2: schemeDark2,
+} as const;
+
+export type CategoricalPaletteName = keyof typeof CATEGORICAL_PALETTE_SCHEMES;
+
+export const CATEGORICAL_PALETTE_NAMES = Object.keys(CATEGORICAL_PALETTE_SCHEMES) as CategoricalPaletteName[];
+
+export interface CategoricalSchemeMetadata {
+  label: string;
+}
+
+export const CATEGORICAL_SCHEME_METADATA: Record<CategoricalPaletteName, CategoricalSchemeMetadata> = {
+  category10: { label: 'D3 Category 10' },
+  tableau10: { label: 'Tableau 10' },
+  set1: { label: 'ColorBrewer Set 1' },
+  set2: { label: 'ColorBrewer Set 2' },
+  set3: { label: 'ColorBrewer Set 3' },
+  dark2: { label: 'ColorBrewer Dark 2' },
+};
+
+export type TimeSeriesChartPaletteOptions =
+  | { mode: 'auto' }
+  | {
+      mode: 'categorical';
+      // Omitting falls back to the ECharts theme palette.
+      name?: CategoricalPaletteName;
+    };
+
+export const PALETTE_DROPDOWN_TOOLTIP =
+  'Auto derives a unique color from the series name — same name always maps to the same color across panels. ' +
+  'Categorical palettes assign colors from a fixed set by series order.';
+
+export type TimeSeriesChartVisualOptions = {
+  display?: 'line' | 'bar';
+  lineWidth?: number;
+  lineStyle?: LineStyleType;
+  areaOpacity?: number;
+  showPoints?: 'auto' | 'always';
+  palette?: TimeSeriesChartPaletteOptions;
+  pointRadius?: number;
+  stack?: StackOptions;
+  connectNulls?: boolean;
+};
+
+export const DEFAULT_FORMAT: FormatOptions = {
+  unit: 'decimal',
+  shortValues: true,
+};
+
+export const DEFAULT_Y_AXIS: TimeSeriesChartYAxisOptions = {
+  show: true,
+  label: '',
+  format: DEFAULT_FORMAT,
+  min: undefined,
+  max: undefined,
+  logBase: undefined,
+};
+
+export const Y_AXIS_CONFIG = {
+  show: { label: 'Show' },
+  label: { label: 'Label' },
+  unit: { label: 'Unit' },
+  min: { label: 'Min' },
+  max: { label: 'Max' },
+  logBase: { label: 'Log Base' },
+};
+
+export const DEFAULT_DISPLAY = 'line';
+export const DEFAULT_LINE_WIDTH = 1.25;
+export const DEFAULT_LINE_STYLE = 'solid';
+export const DEFAULT_AREA_OPACITY = 0;
+// How much larger datapoint symbols are than line width, also applied in VisualOptionsEditor.
+export const POINT_SIZE_OFFSET = 1.5;
+export const DEFAULT_POINT_RADIUS = DEFAULT_LINE_WIDTH + POINT_SIZE_OFFSET;
+export const DEFAULT_CONNECT_NULLS = false;
+
+export const DEFAULT_VISUAL: TimeSeriesChartVisualOptions = {
+  display: DEFAULT_DISPLAY,
+  lineWidth: DEFAULT_LINE_WIDTH,
+  lineStyle: DEFAULT_LINE_STYLE,
+  areaOpacity: DEFAULT_AREA_OPACITY,
+  pointRadius: DEFAULT_POINT_RADIUS,
+  connectNulls: DEFAULT_CONNECT_NULLS,
+};
+
+// Controls how often static threshold values should be plotted so threshold data shows
+// in tooltip without flicker.
+export const THRESHOLD_PLOT_INTERVAL = 15;
+
+export const VISUAL_CONFIG = {
+  lineWidth: {
+    label: 'Line Width',
+    testId: 'slider-line-width',
+    min: 0.25,
+    max: 3,
+    step: 0.25,
+  },
+  lineStyle: {
+    label: 'Line Style',
+  },
+  pointRadius: {
+    label: 'Point Radius',
+    testId: 'slider-point-radius',
+    min: 0,
+    max: 6,
+    step: 0.25,
+  },
+  areaOpacity: {
+    label: 'Area Opacity',
+    testId: 'slider-area-opacity',
+    min: 0,
+    max: 1,
+    step: 0.05,
+  },
+  stack: {
+    label: 'Stack Series',
+  },
+  colorPalette: {
+    label: 'Color Palette',
+  },
+  connectNulls: {
+    label: 'Connect Nulls',
+  },
+};
+
+// None is equivalent to undefined since stack is optional
+export type StackOptions = 'none' | 'all'; // TODO: add percent option support
+
+export const STACK_CONFIG = {
+  none: { label: 'None' },
+  all: { label: 'All' },
+  // TODO: enable option after 'Percent' implemented
+  // percent: { label: 'Percent', disabled: true }, // hidden since not implemented yet
+};
+
+export const STACK_OPTIONS = Object.entries(STACK_CONFIG).map(([id, config]) => {
+  return {
+    id: id as StackOptions,
+    ...config,
+  };
+});
+
+export const LINE_STYLE_CONFIG = {
+  solid: { label: 'Solid' },
+  dashed: { label: 'Dashes' },
+  dotted: { label: 'Dots' },
+};
+
+export const OPACITY_CONFIG = {
+  label: 'Opacity',
+  testId: 'slider-opacity',
+  min: 0,
+  max: 1,
+  step: 0.05,
+};
+
+// LogBase outlines the allowed log bases for the log-supported charts.
+export type LOG_BASE = undefined | 2 | 10;
+
+// Single source of truth for log base configuration
+export const LOG_BASE_CONFIG: Record<string, { label: string; log: LOG_BASE }> = {
+  none: { label: 'None', log: undefined },
+  '2': { label: '2', log: 2 },
+  '10': { label: '10', log: 10 },
+};
+
+// Options array for SettingsAutocomplete
+export const LOG_BASE_OPTIONS = Object.entries(LOG_BASE_CONFIG).map(([id, config]) => ({
+  id: id as string,
+  ...config,
+}));
+
+// Both of these constants help produce a value that is LESS THAN the initial value.
+// For positive values, we multiply by a number less than 1 to get this outcome.
+// For negative values, we multiply to a number greater than 1 to get this outcome.
+export const POSITIVE_MIN_VALUE_MULTIPLIER = 0.8;
+export const NEGATIVE_MIN_VALUE_MULTIPLIER = 1.2;
+
+/**
+ * Creates an initial/empty options object for the TimeSeriesChartPanel.
+ */
+export function createInitialTimeSeriesChartOptions(): TimeSeriesChartOptions {
+  return {};
+}

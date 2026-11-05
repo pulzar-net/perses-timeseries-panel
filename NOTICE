@@ -1,0 +1,10 @@
+perses-timeseries-panel
+Copyright The Perses Authors
+Copyright Pulzar LLC
+
+This product includes the TimeSeriesChart panel plugin from
+https://github.com/perses/plugins (timeserieschart/, at commit 7a3ab10),
+licensed under the Apache License, Version 2.0. Changes: the plugin kind is
+PulzrTimeSeriesChart; lines can be drawn smooth or stepped; series labelled
+band=lo and band=hi are drawn as a filled band; the Grafana migration schema
+is removed.

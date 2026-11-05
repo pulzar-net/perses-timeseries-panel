@@ -1,0 +1,10 @@
+{
+  "kind": "PulzrTimeSeriesChart",
+  "spec": {
+    "visual": {
+      "palette": {
+        "mode": "auto"
+      }
+    }
+  }
+}

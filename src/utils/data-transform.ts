@@ -1,0 +1,343 @@
+// Copyright The Perses Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+import type {
+  LegacyTimeSeries,
+  EChartsDataFormat,
+  EChartsValues,
+  TimeSeriesOption,
+  StepOptions,
+} from '@perses-dev/components';
+import { OPTIMIZED_MODE_SERIES_LIMIT, getCommonTimeScale } from '@perses-dev/components';
+import type { useTimeSeriesQueries, PanelData } from '@perses-dev/plugin-system';
+import type { Exemplar, Labels, TimeScale, TimeSeries, TimeSeriesData, TimeSeriesValueTuple } from '@perses-dev/spec';
+import type { YAXisComponentOption } from 'echarts';
+import type { LineSeriesOption, BarSeriesOption, ScatterSeriesOption } from 'echarts/charts';
+
+import type {
+  TimeSeriesChartVisualOptions,
+  TimeSeriesChartYAxisOptions,
+  LineStyleType,
+} from '../time-series-chart-model';
+import {
+  DEFAULT_AREA_OPACITY,
+  DEFAULT_CONNECT_NULLS,
+  DEFAULT_LINE_WIDTH,
+  DEFAULT_POINT_RADIUS,
+  DEFAULT_Y_AXIS,
+  POSITIVE_MIN_VALUE_MULTIPLIER,
+  NEGATIVE_MIN_VALUE_MULTIPLIER,
+} from '../time-series-chart-model';
+
+export type RunningQueriesState = ReturnType<typeof useTimeSeriesQueries>;
+
+export const EMPTY_GRAPH_DATA: EChartsDataFormat = {
+  timeSeries: [],
+  xAxis: [],
+  legendItems: [],
+};
+
+export const HIDE_DATAPOINTS_LIMIT = 70;
+
+export const BLUR_FADEOUT_OPACITY = 0.5;
+
+export const EXEMPLAR_SERIES_ID_PREFIX = 'exemplar-';
+
+export const EXEMPLAR_SYMBOL_SIZE = 14;
+
+/**
+ * The exemplars of one series, converted to a chart-friendly shape with the
+ * rendering attributes (color, y axis) of the matching time series.
+ */
+export interface ExemplarChartData {
+  seriesId: string;
+  seriesName: string;
+  color: string;
+  seriesLabels?: Labels;
+  yAxisIndex?: number;
+  /**
+   * When the matching series is rendered with `querySettings.negativeY`, its values are
+   * visually negated so it renders below the X axis. The same transform is applied to
+   * the exemplar markers' plotted Y values so they stay next to their series. The
+   * original (positive) values remain on each `exemplar` for metadata display.
+   */
+  negativeY?: boolean;
+  exemplars: Exemplar[];
+}
+
+/**
+ * Given a list of running queries, calculates a common time scale for use on
+ * the x axis (i.e. start/end dates and a step that is divisible into all of
+ * the queries' steps).
+ */
+export function getCommonTimeScaleForQueries(queries: Array<PanelData<TimeSeriesData>>): TimeScale | undefined {
+  const seriesData = queries.map((query) => query.data);
+  return getCommonTimeScale(seriesData);
+}
+
+/**
+ * Gets ECharts line series option properties for regular trends
+ */
+export function getTimeSeries(
+  id: string,
+  datasetIndex: number,
+  formattedName: string,
+  visual: TimeSeriesChartVisualOptions,
+  timeScale: TimeScale,
+  paletteColor: string,
+  querySettings?: { lineStyle?: LineStyleType; areaOpacity?: number; stack?: boolean },
+  yAxisIndex?: number,
+  visibleSeriesCount = 1,
+): TimeSeriesOption {
+  const lineWidth = visual.lineWidth ?? DEFAULT_LINE_WIDTH;
+  const pointRadius = visual.pointRadius ?? DEFAULT_POINT_RADIUS;
+  const shouldStack = querySettings?.stack !== undefined ? querySettings.stack : visual.stack === 'all';
+  const areaOpacity = querySettings?.areaOpacity ?? visual.areaOpacity ?? DEFAULT_AREA_OPACITY;
+
+  // Show automatic point markers only on short, sparse charts. Dense charts
+  // otherwise create a symbol for every sample across every visible series.
+  const minuteMs = 60000;
+  let showPoints = timeScale.rangeMs <= minuteMs * 15 && visibleSeriesCount <= HIDE_DATAPOINTS_LIMIT;
+  // Allows overriding default behavior and opt-in to always show all symbols (can hurt performance)
+  if (visual.showPoints === 'always') {
+    showPoints = true;
+  }
+
+  if (visual.display === 'bar') {
+    const series: BarSeriesOption = {
+      type: 'bar',
+      id: id,
+      datasetIndex,
+      name: formattedName,
+      color: paletteColor,
+      stack: shouldStack ? 'all' : undefined,
+      yAxisIndex: yAxisIndex,
+      label: {
+        show: false,
+      },
+    };
+    return series;
+  }
+
+  const series: LineSeriesOption = {
+    type: 'line',
+    id: id,
+    datasetIndex,
+    name: formattedName,
+    connectNulls: visual.connectNulls ?? DEFAULT_CONNECT_NULLS,
+    color: paletteColor,
+    stack: shouldStack ? 'all' : undefined,
+    yAxisIndex: yAxisIndex,
+    sampling: 'lttb',
+    progressiveThreshold: OPTIMIZED_MODE_SERIES_LIMIT, // https://echarts.apache.org/en/option.html#series-lines.progressiveThreshold
+    showSymbol: showPoints,
+    showAllSymbol: true,
+    symbolSize: pointRadius,
+    lineStyle: {
+      width: lineWidth,
+      type: (querySettings?.lineStyle ?? visual.lineStyle) as LineStyleType,
+    },
+    // ECharts builds an area polygon whenever areaStyle is set, including at opacity 0.
+    ...(areaOpacity > 0 ? { areaStyle: { opacity: areaOpacity } } : {}),
+    // https://echarts.apache.org/en/option.html#series-line.emphasis
+    emphasis: {
+      focus: 'series',
+      disabled: areaOpacity > 0, // prevents flicker when moving cursor between shaded regions
+      lineStyle: {
+        width: lineWidth + 1,
+        opacity: 1,
+        type: visual.lineStyle,
+      },
+    },
+    blur: {
+      lineStyle: {
+        width: lineWidth,
+        opacity: BLUR_FADEOUT_OPACITY,
+        type: visual.lineStyle,
+      },
+    },
+  };
+  return series;
+}
+
+/**
+ * Gets an ECharts scatter series rendering exemplar markers for a single series.
+ * Each data item embeds its exemplar (and series labels) so the metadata dialog
+ * can be populated when a marker is clicked.
+ */
+export function getExemplarSeries(data: ExemplarChartData): ScatterSeriesOption {
+  return {
+    type: 'scatter',
+    id: `${EXEMPLAR_SERIES_ID_PREFIX}${data.seriesId}`,
+    name: data.seriesName,
+    color: data.color,
+    yAxisIndex: data.yAxisIndex,
+    symbol: 'diamond',
+    symbolSize: EXEMPLAR_SYMBOL_SIZE,
+    z: 10,
+    cursor: 'pointer',
+    data: data.exemplars.map((exemplar) => ({
+      // The plotted Y value is negated when negativeY is enabled for the matching series,
+      // while `exemplar.value` keeps the original value for the metadata tooltip.
+      value: [exemplar.timestamp, data.negativeY ? -exemplar.value : exemplar.value],
+      exemplar,
+      seriesLabels: data.seriesLabels,
+    })),
+  };
+}
+
+/**
+ * Gets threshold-specific line series styles
+ * markLine cannot be used since it does not update yAxis max / min
+ * and threshold data needs to show in the tooltip
+ */
+export function getThresholdSeries(name: string, threshold: StepOptions, seriesIndex: number): LineSeriesOption {
+  return {
+    type: 'line',
+    name: name,
+    id: name,
+    datasetId: name,
+    datasetIndex: seriesIndex,
+    color: threshold.color,
+    label: {
+      show: false,
+    },
+    lineStyle: {
+      type: 'dashed',
+      width: 2,
+    },
+    emphasis: {
+      focus: 'series',
+      lineStyle: {
+        width: 2.5,
+      },
+    },
+    blur: {
+      lineStyle: {
+        opacity: BLUR_FADEOUT_OPACITY,
+      },
+    },
+  };
+}
+
+/**
+ * Converts percent threshold into absolute step value
+ * If max is undefined, use the max value from time series data as default
+ */
+export function convertPercentThreshold(
+  percent: number,
+  data: LegacyTimeSeries[] | TimeSeries[],
+  max?: number,
+  min?: number,
+): number {
+  const percentDecimal = percent / 100;
+  const adjustedMax = max ?? findMax(data);
+  const adjustedMin = min ?? 0;
+  const total = adjustedMax - adjustedMin;
+  return percentDecimal * total + adjustedMin;
+}
+
+function findMax(data: LegacyTimeSeries[] | TimeSeries[]): number {
+  let max = 0;
+  if (data.length && data[0] !== undefined && (data as TimeSeries[])[0]?.values) {
+    (data as TimeSeries[]).forEach((series) => {
+      series.values.forEach((valueTuple: TimeSeriesValueTuple) => {
+        const [_, value] = valueTuple;
+        // Use the absolute value so percent thresholds compute correctly against
+        // negated series (e.g. when `querySettings[].negativeY` is enabled).
+        if (typeof value === 'number' && Math.abs(value) > max) {
+          max = Math.abs(value);
+        }
+      });
+    });
+  } else {
+    (data as LegacyTimeSeries[]).forEach((series) => {
+      if (series.data !== undefined) {
+        series.data.forEach((value: EChartsValues) => {
+          if (typeof value === 'number' && Math.abs(value) > max) {
+            max = Math.abs(value);
+          }
+        });
+      }
+    });
+  }
+  return max;
+}
+
+/**
+ * Converts Perses panel yAxis from dashboard spec to ECharts supported yAxis options.
+ * Handles both linear and logarithmic scales with appropriate min/max calculations.
+ */
+export function convertPanelYAxis(inputAxis: TimeSeriesChartYAxisOptions = {}): YAXisComponentOption {
+  // Determine the appropriate min value based on scale type and user input
+  let minValue: YAXisComponentOption['min'];
+  if (inputAxis.logBase !== undefined) {
+    // For logarithmic scales without explicit min:
+    // Let ECharts auto-calculate the range based on data to avoid issues with
+    // function-based calculations which can result in improper ranges (e.g., 1-10)
+    minValue = undefined;
+  } else if (inputAxis?.min !== undefined) {
+    // User explicitly set a min value - use it for both linear and log scales
+    minValue = inputAxis.min;
+  } else {
+    // For linear scales without explicit min:
+    // Use dynamic calculation with padding for better visualization
+    // https://echarts.apache.org/en/option.html#yAxis.min
+    minValue = (value): number => {
+      if (value.min >= 0 && value.min <= 1) {
+        // Helps with PercentDecimal units, or datasets that return 0 or 1 booleans
+        return 0;
+      }
+
+      // Note: We can tweak the MULTIPLIER constants if we want
+      // TODO: Experiment with using a padding that is based on the difference between max value and min value
+      if (value.min > 0) {
+        return roundDown(value.min * POSITIVE_MIN_VALUE_MULTIPLIER);
+      } else {
+        return roundDown(value.min * NEGATIVE_MIN_VALUE_MULTIPLIER);
+      }
+    };
+  }
+
+  // Build the yAxis configuration
+  const yAxis = {
+    show: inputAxis?.show ?? DEFAULT_Y_AXIS.show,
+    min: minValue,
+    max: inputAxis?.max,
+  } satisfies YAXisComponentOption;
+
+  // Apply logarithmic scale settings if requested
+  if (inputAxis.logBase !== undefined) {
+    return {
+      ...yAxis,
+      type: 'log',
+      logBase: inputAxis.logBase,
+    };
+  }
+
+  return yAxis;
+}
+
+/**
+ * Rounds down to nearest number with one significant digit.
+ *
+ * Examples:
+ * 1. 675 --> 600
+ * 2. 0.567 --> 0.5
+ * 3. -12 --> -20
+ */
+export function roundDown(num: number): number {
+  const magnitude = Math.floor(Math.log10(Math.abs(num)));
+  const firstDigit = Math.floor(num / Math.pow(10, magnitude));
+  return Number((firstDigit * Math.pow(10, magnitude)).toPrecision(1));
+}
