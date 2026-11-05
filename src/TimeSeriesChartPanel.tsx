@@ -48,13 +48,20 @@ import merge from 'lodash/merge';
 import type { ReactElement } from 'react';
 import { memo, useCallback, useId, useMemo, useRef, useState } from 'react';
 
-import type { TimeSeriesChartOptions } from './time-series-chart-model';
-import { DEFAULT_FORMAT, DEFAULT_VISUAL, THRESHOLD_PLOT_INTERVAL } from './time-series-chart-model';
+import type { BandEdge, TimeSeriesChartOptions } from './time-series-chart-model';
+import {
+  BAND_LABEL,
+  DEFAULT_BAND_OPACITY,
+  DEFAULT_FORMAT,
+  DEFAULT_VISUAL,
+  THRESHOLD_PLOT_INTERVAL,
+} from './time-series-chart-model';
 import { TimeSeriesChartBase } from './TimeSeriesChartBase';
 import type { TimeSeriesAnnotation } from './utils/annotation';
 import { convertAnnotationToTimeSeriesAnnotation } from './utils/annotation';
 import type { ExemplarChartData } from './utils/data-transform';
 import {
+  getBandSeries,
   getTimeSeries,
   getCommonTimeScaleForQueries,
   convertPanelYAxis,
@@ -287,8 +294,29 @@ function TimeSeriesChartPanelComponent(props: TimeSeriesChartProps): ReactElemen
     // Index is counted across multiple queries which ensures the categorical color palette does not reset for every query
     let seriesIndex = 0;
 
-    for (const { querySettings, series } of preparedQueries) {
+    // A query's band edges, drawn after every other series (see getBandSeries)
+    const bands: Array<{
+      id: string;
+      color?: string;
+      yAxisIndex: number;
+      querySettings?: (typeof preparedQueries)[number]['querySettings'];
+      edges: Partial<Record<BandEdge, TimeSeriesValueTuple[]>>;
+    }> = [];
+
+    for (const [queryIndex, { querySettings, series }] of preparedQueries.entries()) {
+      const band: (typeof bands)[number] = {
+        id: `${chartId}band${queryIndex}`,
+        yAxisIndex: querySettings?.format?.unit ? (formatToYAxisIndex.get(querySettings.format.unit) ?? 0) : 0,
+        querySettings,
+        edges: {},
+      };
+      bands.push(band);
       for (const { timeSeries, seriesId, values, calculations, maxValue } of series) {
+        const edge = timeSeries.labels?.[BAND_LABEL];
+        if (edge === 'lo' || edge === 'hi') {
+          band.edges[edge] = values;
+          continue;
+        }
         // Format is determined by seriesNameFormat in query spec
         const formattedSeriesName = timeSeries.formattedName ?? timeSeries.name;
 
@@ -303,6 +331,7 @@ function TimeSeriesChartPanelComponent(props: TimeSeriesChartProps): ReactElemen
           querySettings: querySettings,
           queryHasMultipleResults: series.length > 1,
         });
+        if (band.color === undefined) band.color = seriesColor;
 
         // When we initially load the chart, we want to show all series, but
         // DO NOT want to visualy highlight all the items in the legend.
@@ -408,6 +437,21 @@ function TimeSeriesChartPanelComponent(props: TimeSeriesChartProps): ReactElemen
       });
     }
 
+    for (const { id, color, yAxisIndex, querySettings, edges } of bands) {
+      if (!edges.lo || !edges.hi) continue;
+      timeSeriesMapping.push(
+        ...getBandSeries(
+          id,
+          edges.lo,
+          edges.hi,
+          color ?? muiTheme.palette.primary.main,
+          visual.bandOpacity ?? DEFAULT_BAND_OPACITY,
+          yAxisIndex,
+          querySettings?.lineInterpolation ?? visual.lineInterpolation,
+        ),
+      );
+    }
+
     return {
       timeScale,
       timeChartData,
@@ -429,6 +473,7 @@ function TimeSeriesChartPanelComponent(props: TimeSeriesChartProps): ReactElemen
     chartsTheme.thresholds,
     muiTheme.palette.primary.main,
     formatToYAxisIndex,
+    chartId,
   ]);
 
   // Create multiple Y axes if there are additional formats

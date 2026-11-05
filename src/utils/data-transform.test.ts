@@ -18,6 +18,8 @@ import type { TimeSeriesChartVisualOptions, TimeSeriesChartYAxisOptions } from '
 import type { ExemplarChartData } from './data-transform';
 import {
   EXEMPLAR_SERIES_ID_PREFIX,
+  getBandSeries,
+  interpolationOption,
   EXEMPLAR_SYMBOL_SIZE,
   convertPercentThreshold,
   convertPanelYAxis,
@@ -296,5 +298,52 @@ describe('automatic point markers', () => {
   ] as const)('renders markers for %i visible series with showPoints=%s: %s', (count, showPoints, expected) => {
     const series = getTimeSeries('id', 0, 'name', { showPoints }, scale, '#000000', undefined, undefined, count);
     expect(series).toHaveProperty('showSymbol', expected);
+  });
+});
+
+describe('interpolationOption', () => {
+  it('maps each interpolation to ECharts', () => {
+    expect(interpolationOption('smooth')).toEqual({ smooth: true });
+    expect(interpolationOption('stepBefore')).toEqual({ step: 'start' });
+    expect(interpolationOption('stepAfter')).toEqual({ step: 'end' });
+    expect(interpolationOption('linear')).toEqual({});
+    expect(interpolationOption(undefined)).toEqual({});
+  });
+});
+
+describe('getBandSeries', () => {
+  it('stacks the band height on an invisible lower edge, with its own data', () => {
+    const [lo, hi] = getBandSeries(
+      'b0',
+      [
+        [1, 20],
+        [2, null],
+      ],
+      [
+        [1, 24],
+        [2, 25],
+      ],
+      '#123456',
+      0.2,
+    );
+    expect(lo).toMatchObject({
+      id: 'b0-lo',
+      stack: 'b0',
+      data: [
+        [1, 20],
+        [2, null],
+      ],
+      lineStyle: { opacity: 0 },
+    });
+    expect(hi).toMatchObject({
+      id: 'b0-hi',
+      stack: 'b0',
+      data: [
+        [1, 4],
+        [2, null],
+      ],
+      areaStyle: { opacity: 0.2 },
+    });
+    expect(lo).not.toHaveProperty('datasetIndex');
   });
 });

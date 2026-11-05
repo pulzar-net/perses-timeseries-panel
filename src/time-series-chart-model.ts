@@ -21,6 +21,9 @@ import { schemeCategory10, schemeDark2, schemeSet1, schemeSet2, schemeSet3, sche
  */
 export type LineStyleType = 'solid' | 'dashed' | 'dotted';
 
+/** How a line joins its points. The step names are Grafana's: stepBefore rises at the earlier point. */
+export type LineInterpolation = 'linear' | 'smooth' | 'stepBefore' | 'stepAfter';
+
 /**
  * The schema for a TimeSeriesChart panel.
  */
@@ -45,6 +48,7 @@ export interface QuerySettingsOptions {
   colorMode?: 'fixed' | 'fixed-single';
   colorValue?: string;
   lineStyle?: LineStyleType;
+  lineInterpolation?: LineInterpolation;
   areaOpacity?: number;
   format?: FormatOptions;
   /**
@@ -115,7 +119,10 @@ export type TimeSeriesChartVisualOptions = {
   display?: 'line' | 'bar';
   lineWidth?: number;
   lineStyle?: LineStyleType;
+  lineInterpolation?: LineInterpolation;
   areaOpacity?: number;
+  /** Fill of a band: a query's series labelled band=lo and band=hi. */
+  bandOpacity?: number;
   showPoints?: 'auto' | 'always';
   palette?: TimeSeriesChartPaletteOptions;
   pointRadius?: number;
@@ -154,6 +161,11 @@ export const DEFAULT_AREA_OPACITY = 0;
 export const POINT_SIZE_OFFSET = 1.5;
 export const DEFAULT_POINT_RADIUS = DEFAULT_LINE_WIDTH + POINT_SIZE_OFFSET;
 export const DEFAULT_CONNECT_NULLS = false;
+export const DEFAULT_BAND_OPACITY = 0.15;
+
+/** The label, and its two values, that mark a series as a band edge. */
+export const BAND_LABEL = 'band';
+export type BandEdge = 'lo' | 'hi';
 
 export const DEFAULT_VISUAL: TimeSeriesChartVisualOptions = {
   display: DEFAULT_DISPLAY,
@@ -178,6 +190,16 @@ export const VISUAL_CONFIG = {
   },
   lineStyle: {
     label: 'Line Style',
+  },
+  lineInterpolation: {
+    label: 'Line Interpolation',
+  },
+  bandOpacity: {
+    label: 'Band Opacity',
+    testId: 'slider-band-opacity',
+    min: 0,
+    max: 1,
+    step: 0.05,
   },
   pointRadius: {
     label: 'Point Radius',
@@ -225,6 +247,13 @@ export const LINE_STYLE_CONFIG = {
   solid: { label: 'Solid' },
   dashed: { label: 'Dashes' },
   dotted: { label: 'Dots' },
+};
+
+export const LINE_INTERPOLATION_CONFIG = {
+  linear: { label: 'Linear' },
+  smooth: { label: 'Smooth' },
+  stepBefore: { label: 'Step before' },
+  stepAfter: { label: 'Step after' },
 };
 
 export const OPACITY_CONFIG = {

@@ -44,7 +44,9 @@ spec: close({
 	display?:      "line" | "bar"
 	lineWidth?:    number & >=0.25 & <=3
 	lineStyle?:    #lineStyle
+	lineInterpolation?: #lineInterpolation
 	areaOpacity?:  #areaOpacity
+	bandOpacity?:  #areaOpacity
 	showPoints?:   "auto" | "always"
 	palette?:      #palette
 	pointRadius?:  number & >=0 & <=6
@@ -69,11 +71,14 @@ spec: close({
 	colorMode?:   "fixed" | "fixed-single"       // NB: "palette" could be added later
 	colorValue?:  =~"^#(?:[0-9a-fA-F]{3}){1,2}$" // hexadecimal color code
 	lineStyle?:   #lineStyle
+	lineInterpolation?: #lineInterpolation
 	areaOpacity?: #areaOpacity
 	format?:      common.#format
 	negativeY?:   bool // render the query's series below the X axis
 	stack?:       bool
 }]
+
+#lineInterpolation: "linear" | "smooth" | "stepBefore" | "stepAfter"
 
 #lineStyle: "solid" | "dashed" | "dotted"
 

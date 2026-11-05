@@ -20,6 +20,7 @@ import { PaletteSelector } from './components/PaletteSelector';
 import type { StackOptions, TimeSeriesChartVisualOptions } from './time-series-chart-model';
 import {
   DEFAULT_AREA_OPACITY,
+  DEFAULT_BAND_OPACITY,
   DEFAULT_CONNECT_NULLS,
   DEFAULT_LINE_WIDTH,
   DEFAULT_LINE_STYLE,
@@ -27,6 +28,7 @@ import {
   POINT_SIZE_OFFSET,
   STACK_CONFIG,
   STACK_OPTIONS,
+  LINE_INTERPOLATION_CONFIG,
   LINE_STYLE_CONFIG,
   VISUAL_CONFIG,
   DEFAULT_DISPLAY,
@@ -153,6 +155,43 @@ export function VisualOptionsEditor({ value, onChange }: VisualOptionsEditorProp
                   </ToggleButton>
                 ))}
               </ToggleButtonGroup>
+            }
+          />
+          <OptionsEditorControl
+            label={VISUAL_CONFIG.lineInterpolation.label}
+            control={
+              <ToggleButtonGroup
+                color="primary"
+                exclusive
+                value={value.lineInterpolation ?? 'linear'}
+                onChange={(__, newValue) => {
+                  onChange({
+                    ...value,
+                    lineInterpolation: newValue === 'linear' ? undefined : newValue,
+                  });
+                }}
+              >
+                {Object.entries(LINE_INTERPOLATION_CONFIG).map(([interpolation, config]) => (
+                  <ToggleButton key={interpolation} value={interpolation} aria-label={`${config.label} lines`}>
+                    {config.label}
+                  </ToggleButton>
+                ))}
+              </ToggleButtonGroup>
+            }
+          />
+          <OptionsEditorControl
+            label={VISUAL_CONFIG.bandOpacity.label}
+            control={
+              <Slider
+                data-testid={VISUAL_CONFIG.bandOpacity.testId}
+                value={value.bandOpacity ?? DEFAULT_BAND_OPACITY}
+                valueLabelDisplay="auto"
+                step={VISUAL_CONFIG.bandOpacity.step}
+                marks
+                min={VISUAL_CONFIG.bandOpacity.min}
+                max={VISUAL_CONFIG.bandOpacity.max}
+                onChange={(__, newValue) => onChange({ ...value, bandOpacity: newValue as number })}
+              />
             }
           />
           <OptionsEditorControl

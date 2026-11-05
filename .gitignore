@@ -19,3 +19,4 @@ dist/
 
 # external CUE dependencies
 /cue.mod/pkg/
+*.tar.gz

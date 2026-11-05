@@ -1,0 +1,7 @@
+{
+  "kind": "PulzrTimeSeriesChart",
+  "spec": {
+    "visual": { "lineInterpolation": "stepAfter", "bandOpacity": 0.2 },
+    "querySettings": [{ "queryIndex": 0, "lineInterpolation": "smooth" }]
+  }
+}

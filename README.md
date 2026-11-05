@@ -1,60 +1,36 @@
-# Plugin Module: perses-timeseries-panel 
+# Time series chart with bands and step lines, for Perses
 
-### How to install
+Perses's [time series chart](https://github.com/perses/plugins/tree/main/timeserieschart), as the panel `PulzrTimeSeriesChart`, with two additions:
 
-This plugin requires React and React DOM 18.3 or 19.
+- **Line interpolation**: `linear`, `smooth`, `stepBefore` or `stepAfter`, for the whole panel (`visual.lineInterpolation`) or one query (`querySettings[].lineInterpolation`). A setpoint or a mode is a step line.
+- **Bands**: a query's two series labelled `band: lo` and `band: hi` are drawn as one filled area instead of two lines, in the color of the query's first series, at `visual.bandOpacity` (0.15 by default). The tooltip and legend leave the band out. The [Pulzr Net datasource](https://github.com/pulzar-net/perses-pulzr-datasource) labels a target band this way.
 
-Install peer dependencies:
+Everything else is the upstream chart, and it installs beside it. The aim is to offer both additions to Perses; this repository goes away once the upstream chart has them.
 
-```bash
-npm install react@^19 react-dom@^19 # or react@^18.3.0 react-dom@^18.3.0
+```yaml
+kind: Panel
+spec:
+  plugin:
+    kind: PulzrTimeSeriesChart
+    spec:
+      visual:
+        lineInterpolation: stepAfter
 ```
 
-Install the plugin:
+## Install
 
-```bash
-npm install @pulzr/perses-timeseries-panel
-```
-
-The Perses UI packages your plugin depends on are now maintained in the [`perses/shared`](https://github.com/perses/shared) repository. If you need to develop against local copies of those packages, follow the linking instructions in that repo.
+Put the archive (`PulzrTimeSeriesChart-<version>.tar.gz`, from the releases) in a folder listed in the Perses server's `plugin.archive_paths`, or `npm install @pulzr/perses-timeseries-panel` to embed it.
 
 ## Development
 
-### Setup
-
-Use Node.js 24 or later and npm 11 or later.
-
-Install dependencies and format the generated source:
-
 ```bash
 npm install
-npm run format
-```
-
-### Get Started
-
-Start the dev server:
-
-```bash
-npm run dev
-```
-
-Build the plugin for distribution:
-
-```bash
-npm run build
-```
-
-The build writes an ESM library, TypeScript declarations, and Module Federation assets to `dist/`.
-Publish the built package from that directory.
-
-Run the checks:
-
-```bash
-npm run lint
-npm run format:check
-npm run type-check
 npm test
+percli plugin test-schemas
+npm run build
+percli plugin build
 ```
 
-Tests use Vitest and jsdom. Add tests alongside your source as `*.test.ts` or `*.test.tsx`.
+## License
+
+Apache 2.0. Derived from Perses; see NOTICE.

@@ -22,9 +22,7 @@ const reactCompilerOptions: ReactCompilerOptions = { target: '18' };
 const swcReactOptions: PluginReactOptions['swcReactOptions'] = { development: false };
 
 // Expose the components that will be used in the UI, either Perses UI or embedded.
-const exposedModules: ModuleFederationOptions['exposes'] = [
-  { './PulzrTimeSeriesChart': './src/TimeSeriesChart.ts' },
-];
+const exposedModules: ModuleFederationOptions['exposes'] = [{ './PulzrTimeSeriesChart': './src/TimeSeriesChart.ts' }];
 
 export default defineConfig({
   server: {

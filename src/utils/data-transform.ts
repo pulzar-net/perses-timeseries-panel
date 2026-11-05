@@ -27,6 +27,7 @@ import type { LineSeriesOption, BarSeriesOption, ScatterSeriesOption } from 'ech
 import type {
   TimeSeriesChartVisualOptions,
   TimeSeriesChartYAxisOptions,
+  LineInterpolation,
   LineStyleType,
 } from '../time-series-chart-model';
 import {
@@ -95,7 +96,12 @@ export function getTimeSeries(
   visual: TimeSeriesChartVisualOptions,
   timeScale: TimeScale,
   paletteColor: string,
-  querySettings?: { lineStyle?: LineStyleType; areaOpacity?: number; stack?: boolean },
+  querySettings?: {
+    lineStyle?: LineStyleType;
+    lineInterpolation?: LineInterpolation;
+    areaOpacity?: number;
+    stack?: boolean;
+  },
   yAxisIndex?: number,
   visibleSeriesCount = 1,
 ): TimeSeriesOption {
@@ -147,6 +153,7 @@ export function getTimeSeries(
       width: lineWidth,
       type: (querySettings?.lineStyle ?? visual.lineStyle) as LineStyleType,
     },
+    ...interpolationOption(querySettings?.lineInterpolation ?? visual.lineInterpolation),
     // ECharts builds an area polygon whenever areaStyle is set, including at opacity 0.
     ...(areaOpacity > 0 ? { areaStyle: { opacity: areaOpacity } } : {}),
     // https://echarts.apache.org/en/option.html#series-line.emphasis
@@ -168,6 +175,60 @@ export function getTimeSeries(
     },
   };
   return series;
+}
+
+/** ECharts' line options for an interpolation. Linear is ECharts' default. */
+export function interpolationOption(interpolation?: LineInterpolation): Pick<LineSeriesOption, 'smooth' | 'step'> {
+  switch (interpolation) {
+    case 'smooth':
+      return { smooth: true };
+    case 'stepBefore':
+      return { step: 'start' };
+    case 'stepAfter':
+      return { step: 'end' };
+    default:
+      return {};
+  }
+}
+
+/**
+ * The two ECharts series that fill a band between `lo` and `hi`: an invisible
+ * lower edge, and the band's height stacked on it with an area. They carry
+ * their own data rather than a dataset, and so must come after every series
+ * that has one: the tooltip reads datasets by series index, and would
+ * otherwise show the band's height as its upper edge.
+ */
+export function getBandSeries(
+  id: string,
+  lo: TimeSeriesValueTuple[],
+  hi: TimeSeriesValueTuple[],
+  color: string,
+  opacity: number,
+  yAxisIndex = 0,
+  interpolation?: LineInterpolation,
+): [LineSeriesOption, LineSeriesOption] {
+  const highAt = new Map(hi);
+  const height = lo.map(([t, low]): [number, number | null] => {
+    const high = highAt.get(t);
+    return [t, low === null || high === null || high === undefined ? null : high - low];
+  });
+  const edge: LineSeriesOption = {
+    type: 'line',
+    stack: id,
+    color,
+    yAxisIndex,
+    silent: true,
+    showSymbol: false,
+    lineStyle: { opacity: 0 },
+    emphasis: { disabled: true },
+    tooltip: { show: false },
+    z: 1,
+    ...interpolationOption(interpolation),
+  };
+  return [
+    { ...edge, id: `${id}-lo`, data: lo },
+    { ...edge, id: `${id}-hi`, data: height, areaStyle: { opacity, color } },
+  ];
 }
 
 /**
