@@ -23,6 +23,8 @@ jobs:
           cache: false
       # The Perses CLI at the commit the 0.56 beta packages were cut from.
       - run: go install github.com/perses/perses/cmd/percli@v0.55.1-0.20261105174710-c6e60cd5a5db
+      # percli runs `cue mod tidy` when it builds the plugin archive.
+      - run: go install cuelang.org/go/cmd/cue@v0.16.1
       - run: npm ci
       - run: npm run lint
       - run: npm run type-check
@@ -30,3 +32,4 @@ jobs:
       - run: percli plugin test-schemas
       - run: npm run build
       - run: percli plugin lint
+      - run: percli plugin build
