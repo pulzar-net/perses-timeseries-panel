@@ -117,5 +117,8 @@
     "type": "git",
     "url": "git+https://github.com/pulzar-net/perses-timeseries-panel.git"
   },
-  "homepage": "https://github.com/pulzar-net/perses-timeseries-panel#readme"
+  "homepage": "https://github.com/pulzar-net/perses-timeseries-panel#readme",
+  "publishConfig": {
+    "access": "public"
+  }
 }
