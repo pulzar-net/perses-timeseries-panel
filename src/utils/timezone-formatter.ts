@@ -18,7 +18,11 @@ const MONTH_MS = 2629440000;
 const YEAR_MS = 31536000000;
 
 /**
- * Creates a timezone-aware axis formatter function for different time ranges
+ * Creates a timezone-aware axis formatter function for different time ranges.
+ *
+ * Months are named rather than numbered: "01.11" is the 1st of November in
+ * one country and the 11th of January in another. Within a few days a tick on
+ * midnight names its day, so the hours either side of it are placed.
  */
 export function createTimezoneAwareAxisFormatter(rangeMs: number, timeZone: string) {
   return function (value: number): string {
@@ -29,21 +33,24 @@ export function createTimezoneAwareAxisFormatter(rangeMs: number, timeZone: stri
       return formatWithTimeZone(timeStamp, 'yyyy', timeZone);
     }
 
-    // more than 2 years
-    if (rangeMs > YEAR_MS * 2) {
+    // more than 6 months
+    if (rangeMs >= MONTH_MS * 6) {
       return formatWithTimeZone(timeStamp, 'MMM yyyy', timeZone);
     }
 
-    // between 10 days to 6 months
-    if (rangeMs > DAY_MS * 10 && rangeMs < MONTH_MS * 6) {
-      return formatWithTimeZone(timeStamp, 'dd.MM', timeZone);
+    // more than 10 days
+    if (rangeMs > DAY_MS * 10) {
+      return formatWithTimeZone(timeStamp, 'MMM d', timeZone);
     }
+
+    const time = formatWithTimeZone(timeStamp, 'HH:mm', timeZone);
+    const day = formatWithTimeZone(timeStamp, 'MMM d', timeZone);
 
     // between 2 and 10 days
-    if (rangeMs > DAY_MS * 2 && rangeMs <= DAY_MS * 10) {
-      return formatWithTimeZone(timeStamp, 'dd.MM HH:mm', timeZone);
+    if (rangeMs > DAY_MS * 2) {
+      return time === '00:00' ? day : `${day} ${time}`;
     }
 
-    return formatWithTimeZone(timeStamp, 'HH:mm', timeZone);
+    return time === '00:00' ? day : time;
   };
 }

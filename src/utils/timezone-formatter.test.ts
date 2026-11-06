@@ -13,67 +13,33 @@
 
 import { createTimezoneAwareAxisFormatter } from './timezone-formatter';
 
-// Mock formatWithTimeZone since it's from @perses-dev/components
-vi.mock('@perses-dev/components', () => ({
-  formatWithTimeZone: vi.fn((date: Date, format: string, timeZone: string) => {
-    // Simple mock that returns format pattern with timezone
-    return `${format}[${timeZone}]`;
-  }),
-}));
+const HOUR = 60 * 60 * 1000;
+const DAY = 24 * HOUR;
+const noon = Date.UTC(2026, 10, 1, 12, 30); // Nov 1, 2026 12:30 UTC
+const midnight = Date.UTC(2026, 10, 1); // Nov 1, 2026 00:00 UTC
 
 describe('createTimezoneAwareAxisFormatter', () => {
-  const testTimestamp = 1640995200000; // 2022-01-01 00:00:00 UTC
-  const timeZone = 'America/New_York';
+  const at = (rangeMs: number, value: number, timeZone = 'UTC') => createTimezoneAwareAxisFormatter(rangeMs, timeZone)(value);
 
-  it('should format for ranges > 5 years with year format', () => {
-    const formatter = createTimezoneAwareAxisFormatter(6 * 365 * 24 * 60 * 60 * 1000, timeZone);
-    const result = formatter(testTimestamp);
-    expect(result).toBe('yyyy[America/New_York]');
+  it('names the month, never a numbered day and month', () => {
+    expect(at(30 * DAY, noon)).toBe('Nov 1');
+    expect(at(5 * DAY, noon)).toBe('Nov 1 12:30');
   });
 
-  it('should format for ranges > 2 years with month-year format', () => {
-    const formatter = createTimezoneAwareAxisFormatter(3 * 365 * 24 * 60 * 60 * 1000, timeZone);
-    const result = formatter(testTimestamp);
-    expect(result).toBe('MMM yyyy[America/New_York]');
+  it('names the day at midnight and gives the time otherwise, within a few days', () => {
+    expect(at(6 * HOUR, noon)).toBe('12:30');
+    expect(at(2 * DAY, midnight)).toBe('Nov 1');
+    expect(at(5 * DAY, midnight)).toBe('Nov 1');
   });
 
-  it('should format for ranges between 10 days and 6 months with day-month format', () => {
-    const formatter = createTimezoneAwareAxisFormatter(30 * 24 * 60 * 60 * 1000, timeZone); // 30 days
-    const result = formatter(testTimestamp);
-    expect(result).toBe('dd.MM[America/New_York]');
+  it('months, then years, over long ranges', () => {
+    expect(at(300 * DAY, noon)).toBe('Nov 2026'); // between 6 months and 2 years
+    expect(at(3 * 365 * DAY, noon)).toBe('Nov 2026');
+    expect(at(6 * 365 * DAY, noon)).toBe('2026');
   });
 
-  it('should format for ranges between 2-10 days with day-month-time format', () => {
-    const formatter = createTimezoneAwareAxisFormatter(5 * 24 * 60 * 60 * 1000, timeZone); // 5 days
-    const result = formatter(testTimestamp);
-    expect(result).toBe('dd.MM HH:mm[America/New_York]');
-  });
-
-  it('should format for ranges <= 2 days with time format', () => {
-    const formatter = createTimezoneAwareAxisFormatter(6 * 60 * 60 * 1000, timeZone); // 6 hours
-    const result = formatter(testTimestamp);
-    expect(result).toBe('HH:mm[America/New_York]');
-  });
-
-  it('should handle different timezones', () => {
-    const formatter = createTimezoneAwareAxisFormatter(6 * 60 * 60 * 1000, 'Europe/Prague');
-    const result = formatter(testTimestamp);
-    expect(result).toBe('HH:mm[Europe/Prague]');
-  });
-
-  it('should handle edge case at exactly 5 years', () => {
-    const fiveYears = 5 * 365 * 24 * 60 * 60 * 1000;
-    const formatter = createTimezoneAwareAxisFormatter(fiveYears, timeZone);
-    const result = formatter(testTimestamp);
-    // Should use MMM yyyy format (not > 5 years)
-    expect(result).toBe('MMM yyyy[America/New_York]');
-  });
-
-  it('should handle edge case at exactly 2 days', () => {
-    const twoDays = 2 * 24 * 60 * 60 * 1000;
-    const formatter = createTimezoneAwareAxisFormatter(twoDays, timeZone);
-    const result = formatter(testTimestamp);
-    // Should use HH:mm format (not > 2 days)
-    expect(result).toBe('HH:mm[America/New_York]');
+  it('in the time zone it is given', () => {
+    expect(at(6 * HOUR, noon, 'America/New_York')).toBe('07:30'); // EST from 2am that day
+    expect(at(2 * DAY, Date.UTC(2026, 10, 1, 4), 'America/New_York')).toBe('Nov 1');
   });
 });
