@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: false
+      # The Perses CLI at the commit the 0.56 beta packages were cut from.
+      - run: go install github.com/perses/perses/cmd/percli@v0.55.1-0.20261105174710-c6e60cd5a5db
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run type-check
+      - run: npm test
+      - run: percli plugin test-schemas
+      - run: npm run build
+      - run: percli plugin lint
