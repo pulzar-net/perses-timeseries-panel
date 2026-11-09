@@ -402,3 +402,36 @@ export function roundDown(num: number): number {
   const firstDigit = Math.floor(num / Math.pow(10, magnitude));
   return Number((firstDigit * Math.pow(10, magnitude)).toPrecision(1));
 }
+
+/**
+ * A series' values on the chart's time scale, with nulls for the steps it has
+ * no value for, so a line breaks where data is missing.
+ *
+ * Perses's own (getTimeSeriesValues in @perses-dev/components) moves each value
+ * onto startMs + n * stepMs. A calendar day, week or month is not a fixed
+ * number of ms: across a clock change a day is 23 or 25 hours, and a month is
+ * 28 to 31 days. There a value lands on the next step, a day late, and a null
+ * breaks the line before it. Here each value keeps its own time, and a null
+ * marks only a step missing between two values; a value within half a step of
+ * where one was expected is that step's.
+ */
+export function getTimeSeriesValues(series: TimeSeries, timeScale: TimeScale): TimeSeriesValueTuple[] {
+  const { stepMs, endMs } = timeScale;
+  const values: TimeSeriesValueTuple[] = [];
+  let expected = timeScale.startMs;
+  for (const [t, value] of series.values) {
+    while (expected + stepMs / 2 < t) {
+      values.push([expected, null]);
+      expected += stepMs;
+    }
+    values.push([t, value]);
+    // Never back: a value before the scale's start, or out of order, does not
+    // send the nulls after it back over steps already passed.
+    expected = Math.max(expected, t + stepMs);
+  }
+  while (expected <= endMs) {
+    values.push([expected, null]);
+    expected += stepMs;
+  }
+  return values;
+}

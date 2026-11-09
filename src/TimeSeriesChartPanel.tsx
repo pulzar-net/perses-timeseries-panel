@@ -31,7 +31,6 @@ import {
   getFormattedMultipleYAxes,
   DEFAULT_LEGEND,
   formatValue,
-  getTimeSeriesValues,
 } from '@perses-dev/components';
 import { usePanelAnnotationsWithData } from '@perses-dev/dashboards';
 import type { PanelProps, CalculationType } from '@perses-dev/plugin-system';
@@ -63,6 +62,7 @@ import type { ExemplarChartData } from './utils/data-transform';
 import {
   getBandSeries,
   getTimeSeries,
+  getTimeSeriesValues,
   getCommonTimeScaleForQueries,
   convertPanelYAxis,
   getThresholdSeries,

@@ -12,7 +12,7 @@
 // limitations under the License.
 
 import type * as ComponentsModule from '@perses-dev/components';
-import { ChartsProvider, testChartsTheme, getTimeSeriesValues } from '@perses-dev/components';
+import { ChartsProvider, testChartsTheme } from '@perses-dev/components';
 import type * as DashboardsModule from '@perses-dev/dashboards';
 import type { AnnotationSpecWithData } from '@perses-dev/dashboards';
 import type * as PluginSystemModule from '@perses-dev/plugin-system';
@@ -27,6 +27,8 @@ import { useCallback, useState } from 'react';
 import { VirtuosoMockContext } from 'react-virtuoso';
 
 import { MOCK_TIME_SERIES_DATA_MULTIVALUE, MOCK_TIME_SERIES_EXEMPLARS } from './test/mock-query-results';
+import type * as DataTransformModule from './utils/data-transform';
+import { getTimeSeriesValues } from './utils/data-transform';
 
 // jsdom has no canvas, so ECharts cannot render. Capture the option passed to
 // the EChart component so tests can assert on the resulting series config.
@@ -37,12 +39,15 @@ vi.mock('@perses-dev/components', async (importOriginal) => {
   const actual = await importOriginal<typeof ComponentsModule>();
   return {
     ...actual,
-    getTimeSeriesValues: vi.fn(actual.getTimeSeriesValues),
     EChart: (props: { option: EChartsCoreOption }): ReactElement => {
       lastChartOption.current = props.option;
       return <div data-testid="echart-mock" />;
     },
   };
+});
+vi.mock('./utils/data-transform', async (importOriginal) => {
+  const actual = await importOriginal<typeof DataTransformModule>();
+  return { ...actual, getTimeSeriesValues: vi.fn(actual.getTimeSeriesValues) };
 });
 import type { TimeSeriesChartProps } from './TimeSeriesChartPanel';
 import { TimeSeriesChartPanel } from './TimeSeriesChartPanel';

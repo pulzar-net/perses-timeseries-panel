@@ -25,6 +25,7 @@ import {
   convertPanelYAxis,
   getExemplarSeries,
   getTimeSeries,
+  getTimeSeriesValues,
   roundDown,
 } from './data-transform';
 
@@ -345,5 +346,106 @@ describe('getBandSeries', () => {
       areaStyle: { opacity: 0.2 },
     });
     expect(lo).not.toHaveProperty('datasetIndex');
+  });
+});
+
+describe('getTimeSeriesValues', () => {
+  const HOUR = 3_600_000;
+  const DAY = 24 * HOUR;
+  // Local midnights in New York across the end of daylight time (1 November 2026): that day is 25 hours.
+  const nov1 = Date.UTC(2026, 10, 1, 4);
+  const nov2 = Date.UTC(2026, 10, 2, 5);
+  const nov3 = Date.UTC(2026, 10, 3, 5);
+
+  it('keeps a calendar day at its own time across a clock change', () => {
+    const scale: TimeScale = { startMs: nov1, endMs: nov3, stepMs: DAY, rangeMs: nov3 - nov1 };
+    const values = getTimeSeriesValues(
+      {
+        name: 'rate',
+        values: [
+          [nov1, 1],
+          [nov2, 2],
+          [nov3, 3],
+        ],
+      },
+      scale,
+    );
+    expect(values).toEqual([
+      [nov1, 1],
+      [nov2, 2],
+      [nov3, 3],
+    ]);
+  });
+
+  it('breaks the line only for a missing step', () => {
+    const scale: TimeScale = { startMs: nov1, endMs: nov3, stepMs: DAY, rangeMs: nov3 - nov1 };
+    const values = getTimeSeriesValues(
+      {
+        name: 'rate',
+        values: [
+          [nov1, 1],
+          [nov3, 3],
+        ],
+      },
+      scale,
+    );
+    expect(values).toEqual([
+      [nov1, 1],
+      [nov1 + DAY, null],
+      [nov3, 3],
+    ]);
+  });
+
+  it('pads the start and end of the range with nulls, as Perses does', () => {
+    const scale: TimeScale = { startMs: 0, endMs: 4 * HOUR, stepMs: HOUR, rangeMs: 4 * HOUR };
+    const values = getTimeSeriesValues({ name: 'x', values: [[2 * HOUR, 5]] }, scale);
+    expect(values).toEqual([
+      [0, null],
+      [HOUR, null],
+      [2 * HOUR, 5],
+      [3 * HOUR, null],
+      [4 * HOUR, null],
+    ]);
+  });
+
+  it('does not go back for a value before the start of the scale', () => {
+    const scale: TimeScale = { startMs: 10 * HOUR, endMs: 12 * HOUR, stepMs: HOUR, rangeMs: 2 * HOUR };
+    const values = getTimeSeriesValues(
+      {
+        name: 'x',
+        values: [
+          [0, 1],
+          [11 * HOUR, 2],
+        ],
+      },
+      scale,
+    );
+    expect(values).toEqual([
+      [0, 1],
+      [10 * HOUR, null],
+      [11 * HOUR, 2],
+      [12 * HOUR, null],
+    ]);
+  });
+
+  it('matches Perses for values on the grid', () => {
+    const scale: TimeScale = { startMs: 0, endMs: 3 * HOUR, stepMs: HOUR, rangeMs: 3 * HOUR };
+    const values = getTimeSeriesValues(
+      {
+        name: 'x',
+        values: [
+          [0, 1],
+          [HOUR, 2],
+          [3 * HOUR, 4],
+        ],
+      },
+      scale,
+    );
+    expect(values).toEqual([
+      [0, 1],
+      [HOUR, 2],
+      [2 * HOUR, null],
+      [3 * HOUR, 4],
+    ]);
   });
 });
