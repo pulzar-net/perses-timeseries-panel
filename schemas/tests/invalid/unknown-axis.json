@@ -1,0 +1,1 @@
+{ "kind": "PulzrTimeSeriesChart", "spec": { "querySettings": [{ "queryIndex": 0, "axis": "left" }] } }

@@ -1,0 +1,11 @@
+{
+  "kind": "PulzrTimeSeriesChart",
+  "spec": {
+    "visual": { "display": "line" },
+    "querySettings": [
+      { "queryIndex": 0, "display": "bar", "stack": true },
+      { "queryIndex": 1, "axis": "right" },
+      { "queryIndex": 2, "axis": "hidden" }
+    ]
+  }
+}

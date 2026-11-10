@@ -168,6 +168,35 @@ describe('TimeSeriesChartPanel', () => {
     };
   };
 
+  it('draws a query as bars and another as a line on its own axis, or on a hidden one', () => {
+    type Option = {
+      series: Array<{ type: string; yAxisIndex: number }>;
+      yAxis: Array<{ show?: boolean; position?: string }>;
+    };
+    renderPanel(
+      MOCK_TIME_SERIES_DATA_MULTIVALUE,
+      {
+        ...TEST_TIME_SERIES_PANEL.spec,
+        visual: { display: 'line' },
+        querySettings: [
+          { queryIndex: 0, display: 'bar' },
+          { queryIndex: 1, axis: 'right' },
+          { queryIndex: 2, axis: 'hidden' },
+        ],
+      },
+      [MOCK_TIME_SERIES_DATA_MULTIVALUE, MOCK_TIME_SERIES_DATA_MULTIVALUE],
+    );
+    const option = lastChartOption.current as unknown as Option;
+    const perQuery = MOCK_TIME_SERIES_DATA_MULTIVALUE.series.length;
+    const [bars, line, hidden] = [0, 1, 2].map((q) => option.series.filter((s) => s.type !== 'scatter')[q * perQuery]!);
+    expect(bars).toMatchObject({ type: 'bar', yAxisIndex: 0 });
+    expect(line).toMatchObject({ type: 'line', yAxisIndex: 1 });
+    expect(hidden).toMatchObject({ type: 'line', yAxisIndex: 2 });
+    expect(option.yAxis).toHaveLength(3);
+    expect(option.yAxis[1]).toMatchObject({ position: 'right' });
+    expect(option.yAxis[2]).toMatchObject({ show: false });
+  });
+
   it('reuses prepared data when dashboard hover recreates query wrappers', () => {
     vi.mocked(getTimeSeriesValues).mockClear();
     vi.mocked(getCalculations).mockClear();

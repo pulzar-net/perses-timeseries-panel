@@ -145,27 +145,37 @@ function TimeSeriesChartPanelComponent(props: TimeSeriesChartProps): ReactElemen
 
   // Collect unique formats from query settings that differ from the base format
   // These will create additional Y axes on the right side
-  const { additionalFormats, formatToYAxisIndex } = useMemo(() => {
+  const { additionalFormats, hiddenAxes, axisIndexOf } = useMemo(() => {
     const baseUnit = format?.unit ?? 'decimal';
     const additionalFormats: Array<typeof format> = [];
     const formatToYAxisIndex = new Map<string, number>();
+    const hiddenAxes = new Set<number>();
+
+    // A query's axis: the base one, unless its unit differs or it asks for its own (right, or hidden).
+    const keyOf = (qs?: { format?: typeof format; axis?: 'right' | 'hidden' }): string => {
+      const unit = qs?.format?.unit ?? baseUnit;
+      return unit === baseUnit && !qs?.axis ? baseUnit : `${unit}|${qs?.axis ?? ''}`;
+    };
 
     // Index 0 is reserved for the base Y axis
     formatToYAxisIndex.set(baseUnit, 0);
 
-    // Collect unique formats from query settings
-    for (const qs of querySettingsList ?? []) {
-      if (qs.format?.unit && qs.format.unit !== baseUnit) {
-        const unitKey = qs.format.unit;
-        if (!formatToYAxisIndex.has(unitKey)) {
-          // Add new format - index is 1 + position in additionalFormats array
-          formatToYAxisIndex.set(unitKey, 1 + additionalFormats.length);
-          additionalFormats.push(qs.format);
-        }
+    // Collect the axes the query settings ask for: those drawn first, so their offsets on the right are as Perses
+    // works them out, and the hidden ones after them.
+    const asked = (querySettingsList ?? []).filter((qs) => !formatToYAxisIndex.has(keyOf(qs)));
+    for (const qs of [...asked.filter((q) => q.axis !== 'hidden'), ...asked.filter((q) => q.axis === 'hidden')]) {
+      const key = keyOf(qs);
+      if (!formatToYAxisIndex.has(key)) {
+        // Add new format - index is 1 + position in additionalFormats array
+        formatToYAxisIndex.set(key, 1 + additionalFormats.length);
+        additionalFormats.push(qs.format ?? format);
+        if (qs.axis === 'hidden') hiddenAxes.add(additionalFormats.length);
       }
     }
 
-    return { additionalFormats, formatToYAxisIndex };
+    const axisIndexOf = (qs?: { format?: typeof format; axis?: 'right' | 'hidden' }): number =>
+      formatToYAxisIndex.get(keyOf(qs)) ?? 0;
+    return { additionalFormats, hiddenAxes, axisIndexOf };
   }, [format, querySettingsList]);
 
   const [selectedLegendItems, setSelectedLegendItems] = useState<SelectedLegendItemState>('ALL');
@@ -239,7 +249,7 @@ function TimeSeriesChartPanelComponent(props: TimeSeriesChartProps): ReactElemen
               queryHasMultipleResults: series.length > 1,
             }),
             seriesLabels: timeSeries.labels,
-            yAxisIndex: formatToYAxisIndex.get(querySettings?.format?.unit ?? '') ?? 0,
+            yAxisIndex: axisIndexOf(querySettings),
             negativeY: querySettings?.negativeY,
             exemplars: [],
           });
@@ -253,7 +263,7 @@ function TimeSeriesChartPanelComponent(props: TimeSeriesChartProps): ReactElemen
       }
     }
     return groups;
-  }, [preparedQueries, categoricalPalette, visual, muiTheme.palette.primary.main, formatToYAxisIndex]);
+  }, [preparedQueries, categoricalPalette, visual, muiTheme.palette.primary.main, axisIndexOf]);
 
   // Populate series data based on query results
   const {
@@ -306,7 +316,7 @@ function TimeSeriesChartPanelComponent(props: TimeSeriesChartProps): ReactElemen
     for (const [queryIndex, { querySettings, series }] of preparedQueries.entries()) {
       const band: (typeof bands)[number] = {
         id: `${chartId}band${queryIndex}`,
-        yAxisIndex: querySettings?.format?.unit ? (formatToYAxisIndex.get(querySettings.format.unit) ?? 0) : 0,
+        yAxisIndex: axisIndexOf(querySettings),
         querySettings,
         edges: {},
       };
@@ -347,7 +357,7 @@ function TimeSeriesChartPanelComponent(props: TimeSeriesChartProps): ReactElemen
 
           // Determine yAxisIndex based on the query's format setting
           const queryFormat = querySettings?.format;
-          const yAxisIndex = queryFormat?.unit ? (formatToYAxisIndex.get(queryFormat.unit) ?? 0) : 0;
+          const yAxisIndex = axisIndexOf(querySettings);
 
           // Each series is stored as a separate dataset source.
           // https://apache.github.io/echarts-handbook/en/concepts/dataset/#how-to-reference-several-datasets
@@ -356,7 +366,8 @@ function TimeSeriesChartPanelComponent(props: TimeSeriesChartProps): ReactElemen
               seriesId,
               datasetIndex,
               formattedSeriesName,
-              visual,
+              // A query may be bars under a panel of lines, or a line over its bars.
+              querySettings?.display ? { ...visual, display: querySettings.display } : visual,
               timeScale,
               seriesColor,
               querySettings,
@@ -472,7 +483,7 @@ function TimeSeriesChartPanelComponent(props: TimeSeriesChartProps): ReactElemen
     categoricalPalette,
     chartsTheme.thresholds,
     muiTheme.palette.primary.main,
-    formatToYAxisIndex,
+    axisIndexOf,
     chartId,
   ]);
 
@@ -487,8 +498,10 @@ function TimeSeriesChartPanelComponent(props: TimeSeriesChartProps): ReactElemen
       const unitKey = fmt.unit;
       return unitKey ? (maxValuesByFormat?.get(unitKey) ?? 1000) : 1000;
     });
-    return getFormattedMultipleYAxes(echartsYAxis, format, additionalFormats, maxValues);
-  }, [echartsYAxis, format, additionalFormats, maxValuesByFormat]);
+    const axes = getFormattedMultipleYAxes(echartsYAxis, format, additionalFormats, maxValues);
+    // An axis asked hidden keeps its scale and draws nothing; it comes after every drawn one, so none moves for it.
+    return axes.map((axis, index) => (hiddenAxes.has(index) ? { ...axis, show: false } : axis));
+  }, [echartsYAxis, format, additionalFormats, maxValuesByFormat, hiddenAxes]);
 
   // Translate the legend values into columns for the table legend.
   const legendColumns = useMemo(() => {

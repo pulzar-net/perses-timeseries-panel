@@ -58,6 +58,13 @@ export interface QuerySettingsOptions {
    */
   negativeY?: boolean;
   stack?: boolean;
+  /** The query drawn as bars or as a line, whatever the panel's `visual.display`: bars with a line over them. */
+  display?: 'line' | 'bar';
+  /**
+   * The query's own y axis even where its unit is the panel's: `right`, on the right with its own scale; `hidden`,
+   * its own scale with no axis drawn (a line read against nothing but its shape and tooltip).
+   */
+  axis?: 'right' | 'hidden';
 }
 
 export type TimeSeriesChartOptionsEditorProps = OptionsEditorProps<TimeSeriesChartOptions>;

@@ -78,6 +78,10 @@ spec: close({
 	format?:      common.#format
 	negativeY?:   bool // render the query's series below the X axis
 	stack?:       bool
+	// The query as bars or a line, whatever the panel's display.
+	display?: "line" | "bar"
+	// Its own y axis: on the right, or with no axis drawn.
+	axis?: "right" | "hidden"
 }]
 
 #lineInterpolation: "linear" | "smooth" | "stepBefore" | "stepAfter"
