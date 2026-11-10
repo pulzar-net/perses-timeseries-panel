@@ -52,6 +52,8 @@ spec: close({
 	pointRadius?:  number & >=0 & <=6
 	stack?:        "all" | "percent" // TODO: percent option is disabled until support is added
 	connectNulls?: bool
+	// Bars at most this wide, in px.
+	maxBarWidth?: number & >0
 }
 
 #yAxis: {

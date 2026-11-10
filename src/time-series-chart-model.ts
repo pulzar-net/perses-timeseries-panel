@@ -128,6 +128,8 @@ export type TimeSeriesChartVisualOptions = {
   pointRadius?: number;
   stack?: StackOptions;
   connectNulls?: boolean;
+  /** Bars at most this wide, in px: for a few days' bars not to fill the width. */
+  maxBarWidth?: number;
 };
 
 export const DEFAULT_FORMAT: FormatOptions = {

@@ -349,6 +349,17 @@ describe('getBandSeries', () => {
   });
 });
 
+describe('bars at most so wide', () => {
+  const scale = { startMs: 0, endMs: 1000, stepMs: 100, rangeMs: 1000 };
+  it('caps a bar series when asked, and leaves it to ECharts otherwise', () => {
+    expect(getTimeSeries('id', 0, 'name', { display: 'bar', maxBarWidth: 36 }, scale, '#000')).toMatchObject({
+      type: 'bar',
+      barMaxWidth: 36,
+    });
+    expect(getTimeSeries('id', 0, 'name', { display: 'bar' }, scale, '#000')).not.toHaveProperty('barMaxWidth');
+  });
+});
+
 describe('getTimeSeriesValues', () => {
   const HOUR = 3_600_000;
   const DAY = 24 * HOUR;

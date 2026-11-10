@@ -1,0 +1,1 @@
+{ "kind": "PulzrTimeSeriesChart", "spec": { "visual": { "display": "bar", "stack": "all", "maxBarWidth": 36 } } }

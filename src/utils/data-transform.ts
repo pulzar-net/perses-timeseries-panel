@@ -128,6 +128,7 @@ export function getTimeSeries(
       color: paletteColor,
       stack: shouldStack ? 'all' : undefined,
       yAxisIndex: yAxisIndex,
+      ...(visual.maxBarWidth ? { barMaxWidth: visual.maxBarWidth } : {}),
       label: {
         show: false,
       },
