@@ -24,7 +24,7 @@ const YEAR_MS = 31536000000;
  * one country and the 11th of January in another. Within a few days a tick on
  * midnight names its day, so the hours either side of it are placed.
  */
-export function createTimezoneAwareAxisFormatter(rangeMs: number, timeZone: string) {
+export function createTimezoneAwareAxisFormatter(rangeMs: number, timeZone: string, hour12 = twelveHours()) {
   return function (value: number): string {
     const timeStamp = new Date(Number(value));
 
@@ -43,14 +43,26 @@ export function createTimezoneAwareAxisFormatter(rangeMs: number, timeZone: stri
       return formatWithTimeZone(timeStamp, 'MMM d', timeZone);
     }
 
-    const time = formatWithTimeZone(timeStamp, 'HH:mm', timeZone);
+    const time = formatWithTimeZone(timeStamp, clock(timeStamp, timeZone, hour12), timeZone);
     const day = formatWithTimeZone(timeStamp, 'MMM d', timeZone);
 
     // between 2 and 10 days
     if (rangeMs > DAY_MS * 2) {
-      return time === '00:00' ? day : `${day} ${time}`;
+      return time === '00:00' || time === '12 AM' ? day : `${day} ${time}`;
     }
 
-    return time === '00:00' ? day : time;
+    return time === '00:00' || time === '12 AM' ? day : time;
   };
+}
+
+/** Whether the reader's locale tells the time in twelve hours (en-US: 2 PM) or twenty-four (14:00). */
+const twelveHours = (): boolean => new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).resolvedOptions().hour12 === true;
+
+/**
+ * A tick's time as the reader's locale tells it: on twelve hours, `2 AM`, or `2:30 PM` off the hour; on
+ * twenty-four, `14:00`.
+ */
+function clock(timeStamp: Date, timeZone: string, hour12: boolean): string {
+  if (!hour12) return 'HH:mm';
+  return formatWithTimeZone(timeStamp, 'mm', timeZone) === '00' ? 'h a' : 'h:mm a';
 }

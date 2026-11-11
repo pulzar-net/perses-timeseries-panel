@@ -19,7 +19,17 @@ const noon = Date.UTC(2026, 10, 1, 12, 30); // Nov 1, 2026 12:30 UTC
 const midnight = Date.UTC(2026, 10, 1); // Nov 1, 2026 00:00 UTC
 
 describe('createTimezoneAwareAxisFormatter', () => {
-  const at = (rangeMs: number, value: number, timeZone = 'UTC') => createTimezoneAwareAxisFormatter(rangeMs, timeZone)(value);
+  const at = (rangeMs: number, value: number, timeZone = 'UTC'): string =>
+    createTimezoneAwareAxisFormatter(rangeMs, timeZone, false)(value);
+
+  it('tells the time in twelve hours where the reader does', () => {
+    const twelve = (rangeMs: number, value: number): string => createTimezoneAwareAxisFormatter(rangeMs, 'UTC', true)(value);
+    expect(twelve(DAY, midnight + 2 * HOUR)).toBe('2 AM');
+    expect(twelve(DAY, midnight + 14 * HOUR)).toBe('2 PM');
+    expect(twelve(DAY, noon)).toBe('12:30 PM');
+    expect(twelve(DAY, midnight)).toBe('Nov 1');
+    expect(twelve(5 * DAY, midnight + 14 * HOUR)).toBe('Nov 1 2 PM');
+  });
 
   it('names the month, never a numbered day and month', () => {
     expect(at(30 * DAY, noon)).toBe('Nov 1');
