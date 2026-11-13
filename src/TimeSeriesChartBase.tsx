@@ -75,7 +75,7 @@ import { useResizeObserver } from 'use-resize-observer';
 import { ANNOTATION_Y_AXIS, AnnotationTooltip, buildAnnotationSeries } from './annotations/AnnotationTooltip';
 import type { TimeSeriesAnnotation } from './utils/annotation';
 import type { ExemplarChartData } from './utils/data-transform';
-import { EXEMPLAR_SERIES_ID_PREFIX, EXEMPLAR_SYMBOL_SIZE, getExemplarSeries } from './utils/data-transform';
+import { axisStartMs, EXEMPLAR_SERIES_ID_PREFIX, EXEMPLAR_SYMBOL_SIZE, getExemplarSeries } from './utils/data-transform';
 import { createTimezoneAwareAxisFormatter } from './utils/timezone-formatter';
 
 registerECharts([
@@ -355,7 +355,7 @@ export const TimeSeriesChartBase = forwardRef<ChartInstance, TimeChartProps>(fun
       series: updatedSeriesMapping,
       xAxis: {
         type: 'time',
-        min: timeScale.startMs,
+        min: axisStartMs(timeScale.startMs, data),
         max: timeScale.endMs,
         axisLabel: {
           hideOverlap: true,

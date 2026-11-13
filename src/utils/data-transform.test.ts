@@ -17,6 +17,7 @@ import type { TimeScale } from '@perses-dev/spec';
 import type { TimeSeriesChartVisualOptions, TimeSeriesChartYAxisOptions } from '../time-series-chart-model';
 import type { ExemplarChartData } from './data-transform';
 import {
+  axisStartMs,
   EXEMPLAR_SERIES_ID_PREFIX,
   getBandSeries,
   interpolationOption,
@@ -458,5 +459,15 @@ describe('getTimeSeriesValues', () => {
       [2 * HOUR, null],
       [3 * HOUR, 4],
     ]);
+  });
+});
+
+describe('axisStartMs', () => {
+  it('starts at a bucket that begins before the range, else at the range', () => {
+    const start = Date.UTC(2026, 10, 6, 1);
+    const midnight = Date.UTC(2026, 10, 6);
+    expect(axisStartMs(start, [{ values: [[midnight, 6.8]] }, { values: [] }])).toBe(midnight);
+    expect(axisStartMs(start, [{ values: [[start + 3_600_000, 1]] }])).toBe(start);
+    expect(axisStartMs(start, [])).toBe(start);
   });
 });

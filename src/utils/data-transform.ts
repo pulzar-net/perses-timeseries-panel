@@ -436,3 +436,12 @@ export function getTimeSeriesValues(series: TimeSeries, timeScale: TimeScale): T
   }
   return values;
 }
+
+/**
+ * Where the time axis starts: the range's start, or a value before it. A
+ * day's bucket that begins before a live range does (the first day of the
+ * last 7 days, from midnight) is drawn where it begins, not off the chart.
+ */
+export function axisStartMs(startMs: number, data: ReadonlyArray<{ values: ReadonlyArray<readonly [number, unknown]> }>): number {
+  return Math.min(startMs, ...data.map((s) => s.values[0]?.[0] ?? Infinity));
+}
