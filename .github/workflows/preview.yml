@@ -1,0 +1,50 @@
+name: Preview
+
+# The sample image in the README (preview/sample.json, drawn by
+# pulzar-net/perses-panel-preview), uploaded to a release as preview-light.png
+# and preview-dark.png. Run by hand to refresh the latest release's images
+# without publishing a version; the Release workflow calls it for each tag.
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        default: ''
+
+permissions:
+  contents: write # upload to the release
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # The plugin's ES modules are all the preview needs; dist/ also takes
+      # the package.json they read their plugin metadata from.
+      - run: npm run build:esm && cp package.json dist/package.json
+      - id: release
+        name: The release to upload to
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          tag="${TAG:-$(gh release view --json tagName --jq .tagName 2>/dev/null || true)}"
+          if [ -z "$tag" ]; then
+            echo "::notice::No release yet: nothing to upload to"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - uses: pulzar-net/perses-panel-preview@v1
+        with:
+          plugin-dir: dist
+      - name: Upload to the release
+        if: steps.release.outputs.tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: gh release upload "$TAG" preview-light.png preview-dark.png --clobber

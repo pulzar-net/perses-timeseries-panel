@@ -1,5 +1,10 @@
 # Time series chart with bands and step lines, for Perses
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/pulzar-net/perses-timeseries-panel/releases/latest/download/preview-dark.png">
+  <img alt="The PulzrTimeSeriesChart panel: two cold room temperatures over 24 hours, with the target band behind them" src="https://github.com/pulzar-net/perses-timeseries-panel/releases/latest/download/preview-light.png">
+</picture>
+
 Perses's [time series chart](https://github.com/perses/plugins/tree/main/timeserieschart), as the panel `PulzrTimeSeriesChart`, with five additions:
 
 - **Line interpolation**: `linear`, `smooth`, `stepBefore` or `stepAfter`, for the whole panel (`visual.lineInterpolation`) or one query (`querySettings[].lineInterpolation`). A setpoint or a mode is a step line.
