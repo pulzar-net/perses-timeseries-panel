@@ -41,11 +41,15 @@ percli plugin build
 
 ### Releasing
 
-Set the new version in `package.json`, commit, then tag and push it:
+Set the new version in `package.json` and commit. Write the release notes
+in `notes.md`, then tag with them as the tag's message and push it:
 
 ```bash
-git tag v0.2.0 && git push origin v0.2.0
+git tag -a v0.2.0 --cleanup=whitespace -F notes.md && git push origin v0.2.0
 ```
+
+The tag's message is the GitHub release's notes; with none, the workflow
+falls back to GitHub's generated notes, and fails if those are empty too.
 
 The Release workflow tests and builds, publishes the package to npm with provenance, and attaches the Perses plugin archive and the npm tarball to a GitHub release.
 
