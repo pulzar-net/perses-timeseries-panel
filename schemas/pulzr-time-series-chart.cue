@@ -29,6 +29,8 @@ spec: close({
 
 #tooltip: {
 	enablePinning?: bool
+	// "all": every series' value at the hovered time, not only those near the cursor
+	mode?: "nearby" | "all"
 }
 
 // Disjunction of closed structs rather than a comprehension (`if mode == "categorical"`): the comprehension

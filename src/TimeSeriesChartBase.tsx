@@ -29,6 +29,7 @@ import {
   EChart,
   enableDataZoom,
   ExemplarMetadataTooltip,
+  formatValue,
   getClosestTimestamp,
   getCommonTimeScale,
   getFormattedAxis,
@@ -128,12 +129,67 @@ export interface TimeChartProps {
   seriesFormatMap?: Map<string, FormatOptions>;
   grid?: GridComponentOption;
   tooltipConfig?: TooltipConfig;
+  /** Every series' value at the hovered time, in ECharts' axis tooltip, instead of the nearby ones. */
+  allSeriesTooltip?: boolean;
   noDataVariant?: 'chart' | 'message';
   syncGroup?: string;
   isStackedBar?: boolean;
   onDataZoom?: (e: ZoomEventData) => void;
   onDoubleClick?: (e: MouseEvent) => void;
   __experimentalEChartsOptionsOverride?: (options: EChartsCoreOption) => EChartsCoreOption;
+}
+
+const escapeHtml = (text: string): string =>
+  text.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c);
+
+interface AxisTooltipParam {
+  seriesId?: string;
+  seriesName?: string;
+  marker?: string;
+  value?: unknown;
+  axisValue?: number | string;
+}
+
+/**
+ * The `mode: all` tooltip: the hovered time, then every drawn series' value
+ * there, highest first. Only the chart's own series: a band's edges, the
+ * annotation marks and exemplars are left out, and so is a series with no
+ * value at that time.
+ */
+export function allSeriesTooltipHtml(
+  params: unknown,
+  seriesIds: Set<string>,
+  format?: FormatOptions,
+  seriesFormatMap?: Map<string, FormatOptions>,
+): string {
+  const list = (Array.isArray(params) ? params : [params]) as AxisTooltipParam[];
+  const rows = list
+    .map((p) => {
+      const raw = Array.isArray(p.value) ? p.value[1] : p.value;
+      return { p, value: typeof raw === 'number' ? raw : null };
+    })
+    .filter(({ p, value }) => value !== null && seriesIds.has(String(p.seriesId)))
+    .sort((a, b) => (b.value as number) - (a.value as number));
+  const at = list[0]?.axisValue;
+  const when =
+    at === undefined
+      ? ''
+      : new Date(Number(at)).toLocaleString(undefined, {
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+        });
+  const lines = rows.map(({ p, value }) => {
+    const valueFormat = seriesFormatMap?.get(String(p.seriesId)) ?? format;
+    const shown = valueFormat ? formatValue(value as number, valueFormat) : String(value);
+    return (
+      `<div style="display:flex;gap:16px;justify-content:space-between;align-items:center">` +
+      `<span>${p.marker ?? ''}${escapeHtml(p.seriesName ?? '')}</span>` +
+      `<strong style="font-variant-numeric:tabular-nums">${escapeHtml(shown)}</strong></div>`
+    );
+  });
+  return `<div style="font-size:12px;line-height:1.6"><div style="opacity:0.7;margin-bottom:2px">${escapeHtml(when)}</div>${lines.join('')}</div>`;
 }
 
 export const TimeSeriesChartBase = forwardRef<ChartInstance, TimeChartProps>(function TimeChart(
@@ -150,6 +206,7 @@ export const TimeSeriesChartBase = forwardRef<ChartInstance, TimeChartProps>(fun
     grid,
     isStackedBar = false,
     tooltipConfig = DEFAULT_TOOLTIP_CONFIG,
+    allSeriesTooltip = false,
     noDataVariant = 'message',
     syncGroup,
     onDataZoom,
@@ -371,14 +428,23 @@ export const TimeSeriesChartBase = forwardRef<ChartInstance, TimeChartProps>(fun
         ...(annotationSeries.length > 0 ? [ANNOTATION_Y_AXIS] : []),
       ],
       animation: false,
-      tooltip: {
-        show: true,
-        // ECharts tooltip content hidden by default since we use custom tooltip instead.
-        // Stacked bar uses ECharts tooltip so subgroup data shows correctly.
-        showContent: isStackedBar,
-        trigger: isStackedBar ? 'item' : 'axis',
-        appendToBody: isStackedBar,
-      },
+      tooltip: allSeriesTooltip
+        ? {
+            show: true,
+            showContent: true,
+            trigger: 'axis',
+            appendToBody: true,
+            formatter: (params: unknown) =>
+              allSeriesTooltipHtml(params, new Set(seriesMapping.map((s) => String(s.id))), format, seriesFormatMap),
+          }
+        : {
+            show: true,
+            // ECharts tooltip content hidden by default since we use custom tooltip instead.
+            // Stacked bar uses ECharts tooltip so subgroup data shows correctly.
+            showContent: isStackedBar,
+            trigger: isStackedBar ? 'item' : 'axis',
+            appendToBody: isStackedBar,
+          },
       // https://echarts.apache.org/en/option.html#axisPointer
       axisPointer: {
         type: 'line',

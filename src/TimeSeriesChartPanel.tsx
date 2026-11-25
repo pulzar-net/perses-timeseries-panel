@@ -583,9 +583,12 @@ function TimeSeriesChartPanelComponent(props: TimeSeriesChartProps): ReactElemen
   } else if (tooltip?.enablePinning !== undefined) {
     enablePinning = tooltip.enablePinning;
   }
+  const allSeriesTooltip = tooltip?.mode === 'all' && !isStackedBar;
   const tooltipConfig: TooltipConfig = {
     ...DEFAULT_TOOLTIP_CONFIG,
-    enablePinning,
+    enablePinning: enablePinning && !allSeriesTooltip,
+    // The ECharts axis tooltip lists every series instead (TimeSeriesChartBase).
+    hidden: allSeriesTooltip,
   };
 
   return (
@@ -635,6 +638,7 @@ function TimeSeriesChartPanelComponent(props: TimeSeriesChartProps): ReactElemen
                 grid={gridOverrides}
                 isStackedBar={isStackedBar}
                 tooltipConfig={tooltipConfig}
+                allSeriesTooltip={allSeriesTooltip}
                 syncGroup="default-panel-group" // TODO: make configurable from dashboard settings and per panel-group overrides
                 onDataZoom={handleDataZoom}
                 //  Show an empty chart when there is no data because the user unselected all items in

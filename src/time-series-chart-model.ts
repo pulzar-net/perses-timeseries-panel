@@ -79,7 +79,12 @@ export interface TimeSeriesChartYAxisOptions {
 }
 
 export interface TooltipSpecOptions {
-  enablePinning: boolean;
+  enablePinning?: boolean;
+  /**
+   * `nearby` (the default) lists the series near the cursor, as Perses does;
+   * `all` lists every series' value at the hovered time, highest first.
+   */
+  mode?: 'nearby' | 'all';
 }
 
 export type TimeSeriesChartPaletteMode = 'auto' | 'categorical';

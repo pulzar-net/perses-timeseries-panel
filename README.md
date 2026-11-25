@@ -5,13 +5,14 @@
   <img alt="The PulzrTimeSeriesChart panel: two cold room temperatures over 24 hours, with the target band behind them" src="https://github.com/pulzar-net/perses-timeseries-panel/releases/latest/download/preview-light.png">
 </picture>
 
-Perses's [time series chart](https://github.com/perses/plugins/tree/main/timeserieschart), as the panel `PulzrTimeSeriesChart`, with five additions:
+Perses's [time series chart](https://github.com/perses/plugins/tree/main/timeserieschart), as the panel `PulzrTimeSeriesChart`, with six additions:
 
 - **Line interpolation**: `linear`, `smooth`, `stepBefore` or `stepAfter`, for the whole panel (`visual.lineInterpolation`) or one query (`querySettings[].lineInterpolation`). A setpoint or a mode is a step line.
 - **Calendar steps**: a query whose points are calendar days, weeks or months (local midnights) is drawn where its points are. Perses lays every point on the range's start plus a whole number of steps, so across a clock change (a 23- or 25-hour day) or in a 31-day month a point moved to the next step and the line broke before it. Here a point keeps its own time, and the line breaks only where a whole step is missing. A query of months gives the longest month, 31 days, as its step.
 - **Bars and lines together**: `querySettings[].display` draws one query as bars and another as a line over them, whatever `visual.display` says; `querySettings[].axis: right` gives a query its own scale on the right even in the panel's unit (permits sold as bars, permits active as a line), and `axis: hidden` its own scale with no axis drawn.
 - **Bar width**: `visual.maxBarWidth` keeps bars at most so many px wide, as a week of daily bars should not fill the chart.
 - **Bands**: a query's two series labelled `band: lo` and `band: hi` are drawn as one filled area instead of two lines, in the color of the query's first series, at `visual.bandOpacity` (0.15 by default). The tooltip and legend leave the band out. The [Pulzr Net datasource](https://github.com/pulzar-net/perses-pulzr-datasource) labels a target band this way.
+- **Every value on hover**: `tooltip.mode: all` lists every series' value at the hovered time, highest first, instead of only the series near the cursor. A band's edges, annotations and exemplars are left out.
 
 Everything else is the upstream chart, and it installs beside it. The aim is to offer these additions to Perses; this repository goes away once the upstream chart has them.
 
